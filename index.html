@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Habit Grid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #07070c;
+    --panel: rgba(255, 255, 255, 0.04);
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --text: #f4f4f8;
+    --muted: rgba(244, 244, 248, 0.55);
+    --rainbow: linear-gradient(90deg, #ff3d7f, #ff9a3d, #ffe53d, #3dff8b, #3dd6ff, #7a5cff, #ff3dd6, #ff3d7f);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Aurora background */
+  .aurora { position: fixed; inset: 0; z-index: -2; overflow: hidden; filter: blur(90px) saturate(140%); opacity: 0.45; }
+  .aurora span { position: absolute; width: 45vmax; height: 45vmax; border-radius: 50%; mix-blend-mode: screen; animation: drift 24s ease-in-out infinite alternate; }
+  .aurora span:nth-child(1) { background: #ff2d75; top: -15%; left: -10%; }
+  .aurora span:nth-child(2) { background: #3d5cff; top: 10%; right: -15%; animation-delay: -6s; animation-duration: 28s; }
+  .aurora span:nth-child(3) { background: #00e0a4; bottom: -20%; left: 20%; animation-delay: -12s; animation-duration: 32s; }
+  .aurora span:nth-child(4) { background: #ffb02d; bottom: -10%; right: 10%; animation-delay: -3s; animation-duration: 26s; opacity: .6; }
+  @keyframes drift {
+    0% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(8vw, 6vh) scale(1.15); }
+    100% { transform: translate(-6vw, -4vh) scale(0.9); }
+  }
+  .grain { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  /* Header */
+  header { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 36px; }
+  .eyebrow { font-size: 13px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  h1 {
+    font-size: clamp(40px, 7vw, 72px); font-weight: 700; letter-spacing: -0.04em; line-height: .95;
+    background: var(--rainbow); background-size: 300% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: flow 8s linear infinite;
+  }
+  @keyframes flow { to { background-position: 300% 0; } }
+
+  .progress { display: flex; align-items: center; gap: 18px; padding: 14px 22px 14px 14px; border-radius: 999px; background: var(--panel); border: 1px solid var(--panel-border); backdrop-filter: blur(20px); }
+  .ring { --p: 0; width: 64px; height: 64px; border-radius: 50%; position: relative;
+    background: conic-gradient(from -90deg, #ff3d7f, #ff9a3d, #ffe53d, #3dff8b, #3dd6ff, #7a5cff, #ff3dd6 calc(var(--p) * 1%), rgba(255,255,255,.07) 0);
+    transition: --p .6s; }
+  .ring::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #0d0d14; }
+  .ring b { position: absolute; inset: 0; display: grid; place-items: center; z-index: 1; font-size: 15px; font-weight: 600; }
+  .progress .label { font-size: 15px; font-weight: 600; }
+  .progress .sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* Add form */
+  form.add { display: flex; gap: 10px; padding: 8px; border-radius: 20px; background: var(--panel); border: 1px solid var(--panel-border); backdrop-filter: blur(20px); margin-bottom: 32px; position: relative; }
+  form.add::before { content: ""; position: absolute; inset: -1px; border-radius: 21px; padding: 1px; background: var(--rainbow); background-size: 300% 100%; animation: flow 8s linear infinite;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  form.add:focus-within::before { opacity: 1; }
+  form.add input { background: transparent; border: 0; outline: 0; color: var(--text); font: inherit; font-size: 17px; }
+  form.add .emoji { width: 56px; text-align: center; font-size: 22px; border-radius: 14px; background: rgba(255,255,255,.05); }
+  form.add .name { flex: 1; padding: 0 10px; min-width: 0; }
+  form.add input::placeholder { color: rgba(244,244,248,.35); }
+  form.add button { border: 0; cursor: pointer; font: inherit; font-weight: 600; font-size: 15px; color: #0a0a10; padding: 14px 22px; border-radius: 14px;
+    background: var(--rainbow); background-size: 300% 100%; animation: flow 8s linear infinite; transition: transform .15s, box-shadow .2s; }
+  form.add button:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(255, 61, 127, .35); }
+  form.add button:active { transform: scale(.97); }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
+
+  .habit { --h: 300; position: relative; border-radius: 24px; padding: 1px; isolation: isolate;
+    background: linear-gradient(140deg, hsla(var(--h), 100%, 65%, .35), rgba(255,255,255,.06) 40%, hsla(calc(var(--h) + 60), 100%, 65%, .25));
+    transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .3s; }
+  .habit.enter { animation: pop-in .4s cubic-bezier(.2,.8,.2,1.2) both; }
+  @keyframes pop-in { from { opacity: 0; transform: translateY(10px) scale(.96); } }
+  .habit:hover { transform: translateY(-3px); }
+  .habit.done { background: linear-gradient(140deg, hsl(var(--h), 100%, 62%), hsl(calc(var(--h) + 50), 100%, 60%));
+    box-shadow: 0 10px 50px -10px hsla(var(--h), 100%, 60%, .65), 0 0 0 1px hsla(var(--h), 100%, 70%, .4); }
+
+  .inner { border-radius: 23px; background: rgba(13, 13, 20, .88); backdrop-filter: blur(20px); padding: 18px; height: 100%; display: flex; flex-direction: column; gap: 16px; transition: background .35s; }
+  .habit.done .inner { background: rgba(13, 13, 20, .55); }
+
+  .tap { all: unset; cursor: pointer; display: flex; align-items: center; gap: 14px; border-radius: 16px; padding: 4px; -webkit-tap-highlight-color: transparent; }
+  .tap:focus-visible { outline: 2px solid hsl(var(--h), 100%, 70%); outline-offset: 4px; }
+  .icon { width: 56px; height: 56px; flex: none; border-radius: 18px; display: grid; place-items: center; font-size: 28px; position: relative;
+    background: hsla(var(--h), 100%, 60%, .12); border: 1px solid hsla(var(--h), 100%, 70%, .25); transition: transform .3s cubic-bezier(.2,.8,.2,1.4), background .3s; }
+  .tap:active .icon { transform: scale(.88); }
+  .habit.done .icon { background: linear-gradient(140deg, hsl(var(--h), 100%, 62%), hsl(calc(var(--h) + 50), 100%, 60%)); border-color: transparent; }
+  .check { position: absolute; right: -6px; bottom: -6px; width: 22px; height: 22px; border-radius: 50%; background: #fff; color: #0a0a10; font-size: 13px; font-weight: 700;
+    display: grid; place-items: center; transform: scale(0); transition: transform .35s cubic-bezier(.2,.8,.2,1.6); }
+  .habit.done .check { transform: scale(1); }
+  .meta { min-width: 0; }
+  .meta .title { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta .streak { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .habit.done .meta .streak { color: hsl(var(--h), 100%, 82%); }
+
+  .heat { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; }
+  .heat button { all: unset; aspect-ratio: 1; border-radius: 4px; cursor: pointer; background: rgba(255,255,255,.06); transition: transform .15s, background .2s; }
+  .heat button:hover { transform: scale(1.3); }
+  .heat button.on { background: linear-gradient(140deg, hsl(var(--h), 100%, 62%), hsl(calc(var(--h) + 50), 100%, 60%)); box-shadow: 0 0 10px hsla(var(--h), 100%, 60%, .5); }
+  .heat button.today { outline: 1px solid rgba(255,255,255,.55); outline-offset: 1px; }
+  .heat-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-bottom: -8px; }
+
+  .del { all: unset; position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border-radius: 10px; display: grid; place-items: center; cursor: pointer;
+    color: var(--muted); font-size: 16px; opacity: 0; transition: opacity .2s, background .2s, color .2s; z-index: 2; }
+  .habit:hover .del, .del:focus-visible { opacity: 1; }
+  .del:hover { background: rgba(255, 61, 127, .15); color: #ff6b9a; }
+  @media (hover: none) { .del { opacity: .6; } }
+
+  .empty { grid-column: 1 / -1; text-align: center; padding: 72px 24px; border-radius: 24px; border: 1px dashed rgba(255,255,255,.12); color: var(--muted); }
+  .empty .big { font-size: 44px; margin-bottom: 12px; }
+  .empty p { font-size: 16px; }
+
+  /* Particles */
+  .particle { position: fixed; pointer-events: none; width: 8px; height: 8px; border-radius: 3px; z-index: 50; animation: burst .9s cubic-bezier(.1,.7,.3,1) forwards; }
+  @keyframes burst {
+    to { transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(.2); opacity: 0; }
+  }
+
+  .toast { position: fixed; left: 50%; bottom: 32px; transform: translate(-50%, 120px); padding: 14px 22px; border-radius: 999px; font-weight: 600;
+    background: rgba(13,13,20,.9); border: 1px solid var(--panel-border); backdrop-filter: blur(20px); transition: transform .5s cubic-bezier(.2,.8,.2,1.2); z-index: 60; }
+  .toast.show { transform: translate(-50%, 0); }
+  .toast span { background: var(--rainbow); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: flow 4s linear infinite; }
+
+  @property --p { syntax: "<number>"; inherits: false; initial-value: 0; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+  <div class="aurora"><span></span><span></span><span></span><span></span></div>
+  <div class="grain"></div>
+
+  <main class="wrap">
+    <header>
+      <div>
+        <div class="eyebrow" id="date"></div>
+        <h1>Habit Grid</h1>
+      </div>
+      <div class="progress">
+        <div class="ring" id="ring"><b id="pct">0%</b></div>
+        <div>
+          <div class="label" id="progress-label">0 of 0 done</div>
+          <div class="sub" id="progress-sub">Add a habit to begin</div>
+        </div>
+      </div>
+    </header>
+
+    <form class="add" id="add-form" autocomplete="off">
+      <input class="emoji" id="emoji" maxlength="4" placeholder="✨" aria-label="Emoji" />
+      <input class="name" id="name" maxlength="40" placeholder="Add a daily habit… e.g. Drink water" aria-label="Habit name" required />
+      <button type="submit">Add habit</button>
+    </form>
+
+    <section class="grid" id="grid"></section>
+  </main>
+
+  <div class="toast" id="toast"><span>All habits done today ✦</span></div>
+
+<script>
+  const STORAGE_KEY = "habit-grid-v1";
+  const HEAT_DAYS = 28;
+  const DEFAULT_EMOJIS = ["✨", "💧", "📚", "🧘", "🏃", "🥗", "😴", "✍️", "🎧", "🌱"];
+
+  const $ = (id) => document.getElementById(id);
+  const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const daysAgo = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n); return d; };
+  const todayKey = () => dayKey(new Date());
+
+  let state = load();
+  const seen = new Set();
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { habits: [] }; }
+    catch { return { habits: [] }; }
+  }
+  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+  function streak(habit) {
+    let n = 0;
+    let i = habit.days[todayKey()] ? 0 : 1;
+    while (habit.days[dayKey(daysAgo(i))]) { n++; i++; }
+    return n;
+  }
+
+  function render() {
+    const grid = $("grid");
+    grid.innerHTML = "";
+
+    if (!state.habits.length) {
+      grid.innerHTML = `<div class="empty"><div class="big">🌈</div><p>No habits yet. Add your first one above.</p></div>`;
+    }
+
+    const today = todayKey();
+    state.habits.forEach((h, idx) => {
+      const done = !!h.days[today];
+      const s = streak(h);
+      const el = document.createElement("article");
+      el.className = "habit" + (done ? " done" : "") + (seen.has(h.id) ? "" : " enter");
+      el.style.setProperty("--h", h.hue);
+      if (!seen.size) el.style.animationDelay = `${idx * 40}ms`;
+
+      const cells = [];
+      for (let i = HEAT_DAYS - 1; i >= 0; i--) {
+        const d = daysAgo(i), k = dayKey(d);
+        const label = d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+        cells.push(`<button data-day="${k}" class="${h.days[k] ? "on" : ""}${i === 0 ? " today" : ""}" title="${label}" aria-label="${label}${h.days[k] ? " done" : ""}"></button>`);
+      }
+
+      el.innerHTML = `
+        <div class="inner">
+          <button class="del" title="Delete habit" aria-label="Delete ${escapeHtml(h.name)}">✕</button>
+          <button class="tap" aria-pressed="${done}">
+            <div class="icon">${escapeHtml(h.emoji)}<span class="check">✓</span></div>
+            <div class="meta">
+              <div class="title">${escapeHtml(h.name)}</div>
+              <div class="streak">${done ? "Done today · " : "Tap when done · "}${s ? `🔥 ${s} day${s > 1 ? "s" : ""}` : "no streak yet"}</div>
+            </div>
+          </button>
+          <div class="heat-label"><span>4 weeks</span><span>today</span></div>
+          <div class="heat">${cells.join("")}</div>
+        </div>`;
+
+      el.querySelector(".tap").addEventListener("click", (e) => toggle(h.id, today, e.currentTarget.querySelector(".icon")));
+      el.querySelectorAll(".heat button").forEach((b) => b.addEventListener("click", () => toggle(h.id, b.dataset.day, b)));
+      el.querySelector(".del").addEventListener("click", () => {
+        if (confirm(`Delete "${h.name}"?`)) { state.habits = state.habits.filter((x) => x.id !== h.id); save(); render(); }
+      });
+      grid.appendChild(el);
+    });
+    state.habits.forEach((h) => seen.add(h.id));
+
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const total = state.habits.length;
+    const done = state.habits.filter((h) => h.days[todayKey()]).length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    $("ring").style.setProperty("--p", pct);
+    $("pct").textContent = `${pct}%`;
+    $("progress-label").textContent = `${done} of ${total} done`;
+    $("progress-sub").textContent = !total ? "Add a habit to begin" : done === total ? "Perfect day ✦" : `${total - done} to go today`;
+  }
+
+  function toggle(id, day, originEl) {
+    const h = state.habits.find((x) => x.id === id);
+    const wasAllDone = state.habits.length && state.habits.every((x) => x.days[todayKey()]);
+    if (h.days[day]) delete h.days[day];
+    else { h.days[day] = true; burst(originEl, h.hue); }
+    save();
+    render();
+    const allDone = state.habits.every((x) => x.days[todayKey()]);
+    if (allDone && !wasAllDone) celebrate();
+  }
+
+  function burst(el, hue, count = 18) {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement("span");
+      p.className = "particle";
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+      const dist = 40 + Math.random() * 70;
+      p.style.left = `${cx - 4}px`;
+      p.style.top = `${cy - 4}px`;
+      p.style.background = `hsl(${hue + Math.random() * 90 - 20}, 100%, 65%)`;
+      p.style.setProperty("--x", `${Math.cos(angle) * dist}px`);
+      p.style.setProperty("--y", `${Math.sin(angle) * dist}px`);
+      p.style.setProperty("--r", `${Math.random() * 360}deg`);
+      document.body.appendChild(p);
+      p.addEventListener("animationend", () => p.remove());
+    }
+  }
+
+  function celebrate() {
+    const t = $("toast");
+    t.classList.add("show");
+    const w = innerWidth;
+    for (let i = 0; i < 6; i++) {
+      setTimeout(() => {
+        const fake = { getBoundingClientRect: () => ({ left: Math.random() * w, top: 80 + Math.random() * innerHeight * 0.5, width: 0, height: 0 }) };
+        burst(fake, Math.random() * 360, 24);
+      }, i * 120);
+    }
+    setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  $("add-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = $("name").value.trim();
+    if (!name) return;
+    const n = state.habits.length;
+    state.habits.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name,
+      emoji: $("emoji").value.trim() || DEFAULT_EMOJIS[n % DEFAULT_EMOJIS.length],
+      hue: Math.round((n * 47 + 320) % 360),
+      days: {},
+    });
+    save();
+    $("name").value = "";
+    $("emoji").value = "";
+    render();
+    $("name").focus();
+  });
+
+  $("date").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+
+  let lastDay = todayKey();
+  setInterval(() => { if (todayKey() !== lastDay) { lastDay = todayKey(); render(); } }, 60000);
+
+  render();
+</script>
+</body>
+</html>
